@@ -33,7 +33,7 @@ steps:
     set -e
     echo "Adding azure-devops extension to az..."
     az extension add --name azure-devops
-    echo $AZURE_DEVOPS_TOKEN | az devops login --organization https://dev.azure.com/DevQAProdCom
+    echo $(AZURE_DEVOPS_TOKEN) | az devops login --organization https://dev.azure.com/DevQAProdCom
   displayName: 'az extension add azure-devops'
 
 # Validate/normalize WorkItemId and run Copilot agent from agents/Task_Developer
