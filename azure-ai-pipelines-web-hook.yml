@@ -13,6 +13,23 @@ jobs:
     vmImage: 'ubuntu-latest'
   steps:
   - script: |
+      set -e
+      echo "=== Dump webhook step-level env vars and resource ==="
+      echo "WEBHOOK_RESOURCE: '$WEBHOOK_RESOURCE'"
+      echo "WORKITEM_ID: '$WORKITEM_ID'"
+      echo "WORKITEM_TITLE: '$WORKITEM_TITLE'"
+      echo "WORKITEM_STATE: '$WORKITEM_STATE'"
+      echo
+      echo "=== printenv (sorted) ==="
+      printenv | sort
+    displayName: 'Dump webhook context'
+    env:
+      WEBHOOK_RESOURCE: $[ resources.webhooks.BoardsTrigger.resource ]
+      WORKITEM_ID: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
+      WORKITEM_TITLE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
+      WORKITEM_STATE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.State'] ]
+
+  - script: |
       echo "Processing Work Item ID: $WORKITEM_ID"
       echo "The Title is: $WORKITEM_TITLE"
       echo "Current Status: $WORKITEM_STATE"
