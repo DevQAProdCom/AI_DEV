@@ -62,7 +62,7 @@ steps:
     echo "Running Copilot agent 'Task_Developer' from agents folder"
     # Ensure the agent receives input: WORK_ITEM_ID is exported above.
     # Use top-level prompt so Copilot runs the agent non-interactively with the prompt.
-    copilot -p "Use WORK_ITEM_ID = $WORK_ITEM" agent run agents/Task_Developer
+    copilot --agent task-developer --allow-all-tools -p "Use $WORK_ITEM"
   displayName: 'Run Copilot agent Task_Developer'
   env:
     # ensure az + npm commands can find auth tokens if set as pipeline variables/secrets
