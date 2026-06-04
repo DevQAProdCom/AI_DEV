@@ -13,9 +13,9 @@ jobs:
     vmImage: 'ubuntu-latest'
   variables:
     # Map the JSON keys to pipeline variables so all steps can use them
-    WorkItemId: ${{ parameters.BoardsTrigger.resource.fields['System.Id'] }}
-    WorkItemTitle: ${{ parameters.BoardsTrigger.resource.fields['System.Title'] }}
-    WorkItemState: ${{ parameters.BoardsTrigger.resource.fields['System.State'] }}
+    WorkItemId: ${{ resources.webhooks.BoardsTrigger.resource.fields['System.Id'] }}
+    WorkItemTitle: ${{ resources.webhooks.BoardsTrigger.resource.fields['System.Title'] }}
+    WorkItemState: ${{ resources.webhooks.BoardsTrigger.resource.fields['System.State'] }}
   steps:
   - script: |
       echo "Processing Work Item ID: $(WorkItemId)"
