@@ -1,3 +1,8 @@
+---
+name: task-developer-agent
+description: A specialized agent for development.
+---
+
 -Take 'WORK_ITEM_ID' passed to the agent
 - Execute next command "az boards work-item show --id {WORK_ITEM_ID} --org https://dev.azure.com/DevQAProdCom --output json"
 - Use Received Output to:
