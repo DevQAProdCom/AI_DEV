@@ -11,17 +11,16 @@ jobs:
 - job: RunCopilotTasks
   pool:
     vmImage: 'ubuntu-latest'
-  variables:
-    # Map the JSON keys to pipeline variables so all steps can use them
-    WorkItemId: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
-    WorkItemTitle: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
-    WorkItemState: $[ resources.webhooks.BoardsTrigger.resource.fields['System.State'] ]
   steps:
   - script: |
-      echo "Processing Work Item ID: $(WorkItemId)"
-      echo "The Title is: $(WorkItemTitle)"
-      echo "Current Status: $(WorkItemState)"
+      echo "Processing Work Item ID: $WORKITEM_ID"
+      echo "The Title is: $WORKITEM_TITLE"
+      echo "Current Status: $WORKITEM_STATE"
     displayName: 'Echo WebHook Data'
+    env:
+      WORKITEM_ID: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
+      WORKITEM_TITLE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
+      WORKITEM_STATE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.State'] ]
 
   # Install prerequisites (curl, sudo present on ubuntu-latest)
   - script: |
@@ -48,14 +47,14 @@ jobs:
   # Validate/normalize WorkItemId and run Copilot agent from agents/Task_Developer
   - script: |
       set -e
-      echo "WorkItemId parameter: '$(WorkItemId)'"
+      echo "WorkItemId parameter: '$WORKITEM_ID'"
 
-      if [ "$(WorkItemId)" = 'Not Set' ]; then
+      if [ -z "$WORKITEM_ID" ] || [ "$WORKITEM_ID" = 'Not Set' ]; then
         echo "WorkItemId not set; using 'Not Set' placeholder"
         WORK_ITEM='Not Set'
       else
         # Trim possible quotes and validate numeric
-        WI_RAW="$(WorkItemId)"
+        WI_RAW="$WORKITEM_ID"
         WI_TRIMMED=$(echo "$WI_RAW" | tr -d '"')
         if ! echo "$WI_TRIMMED" | grep -E '^[0-9]+$' > /dev/null; then
           echo "Provided WorkItemId is not numeric: $WI_TRIMMED"
@@ -76,6 +75,9 @@ jobs:
     env:
       # ensure az + npm commands can find auth tokens if set as pipeline variables/secrets
       GITHUB_TOKEN: $(GITHUB_TOKEN)
+      WORKITEM_ID: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
+      WORKITEM_TITLE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
+      WORKITEM_STATE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.State'] ]
 
   # Add any additional build/test steps below
   - script: |
