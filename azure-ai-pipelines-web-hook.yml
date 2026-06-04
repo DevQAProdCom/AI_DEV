@@ -7,6 +7,7 @@ resources:
     - webhook: BoardsTrigger             
       connection: BoardsTriggerServiceConnectionName
 
+jobs:
 - job: RunCopilotTasks
   pool:
     vmImage: 'ubuntu-latest'
@@ -15,15 +16,13 @@ resources:
     WorkItemId: ${{ parameters.BoardsTrigger.resource.fields['System.Id'] }}
     WorkItemTitle: ${{ parameters.BoardsTrigger.resource.fields['System.Title'] }}
     WorkItemState: ${{ parameters.BoardsTrigger.resource.fields['System.State'] }}
-
-  # Use the extracted data inside your code blocks
-- script: |
+  steps:
+  - script: |
       echo "Processing Work Item ID: $(WorkItemId)"
       echo "The Title is: $(WorkItemTitle)"
       echo "Current Status: $(WorkItemState)"
     displayName: 'Echo WebHook Data'
 
-  steps:
   # Install prerequisites (curl, sudo present on ubuntu-latest)
   - script: |
       set -e
