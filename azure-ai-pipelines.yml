@@ -1,19 +1,73 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
+# Starter pipeline with Copilot & Azure CLI install + Copilot agent run
+# Add/adjust steps as your project requires
 
 trigger:
 - main
+
+# Pipeline parameters
+parameters:
+- name: WorkItemId
+  type: string
+  default: 'Not Set'
 
 pool:
   vmImage: ubuntu-latest
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
+# Install prerequisites (curl, sudo present on ubuntu-latest)
 - script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+    set -e
+    echo "Installing Azure CLI..."
+    curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+  displayName: 'Install Azure CLI'
+
+# Install GitHub Copilot CLI (via npm). Adjust package name if you use a different distribution.
+- script: |
+    set -e
+    echo "Installing GitHub Copilot CLI via npm..."
+    sudo npm install -g @githubnext/copilot-cli
+  displayName: 'Install GitHub Copilot CLI'
+
+# Add azure-devops extension
+- script: |
+    set -e
+    echo "Adding azure-devops extension to az..."
+    az extension add --name azure-devops
+    echo $AZURE_DEVOPS_TOKEN | az devops login --organization https://dev.azure.com/DevQAProdCom
+  displayName: 'az extension add azure-devops'
+
+# Validate/normalize WorkItemId and run Copilot agent from agents/Task_Developer
+- script: |
+    set -e
+    echo "WorkItemId parameter: '${{ parameters.WorkItemId }}'"
+
+    if [ "${{ parameters.WorkItemId }}" = 'Not Set' ]; then
+      echo "WorkItemId not set; using 'Not Set' placeholder"
+      WORK_ITEM='Not Set'
+    else
+      # Trim possible quotes and validate numeric
+      WI_RAW="${{ parameters.WorkItemId }}"
+      WI_TRIMMED=$(echo "$WI_RAW" | tr -d '"')
+      if ! echo "$WI_TRIMMED" | grep -E '^[0-9]+$' > /dev/null; then
+        echo "Provided WorkItemId is not numeric: $WI_TRIMMED"
+        exit 1
+      fi
+      WORK_ITEM="$WI_TRIMMED"
+      echo "Using WorkItemId: $WORK_ITEM"
+    fi
+
+    # Export as env var for the agent if it reads it
+    export WORK_ITEM_ID="$WORK_ITEM"
+
+    echo "Running Copilot agent 'Task_Developer' from agents folder"
+    # Run the Copilot CLI agent. Adjust the command below if your Copilot CLI uses a different subcommand or flag.
+    copilot agent run --file agents/Task_Developer --env WORK_ITEM_ID="$WORK_ITEM"
+  displayName: 'Run Copilot agent Task_Developer'
+  env:
+    # ensure az + npm commands can find auth tokens if set as pipeline variables/secrets
+    GITHUB_TOKEN: $(GITHUB_TOKEN)
+
+# Add any additional build/test steps below
+- script: |
+    echo "Pipeline finished. Add build/test/deploy steps as needed."
+  displayName: 'Placeholder end step'
