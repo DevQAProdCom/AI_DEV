@@ -9,4 +9,5 @@ description: A specialized agent for development.
     - Create new branch locally with next naming convention "feature/id-{System.Id}/{System-Title}". Use hyphens instead of spaces and remove Git not allowed invalid characters
     - Take "System.Description" and implement solution
     - Use Angular. In case required create new Project with base configuration. All pages should be kept in "src/pages" folder
-    - Commit branch to repository
+    - Make Commit with Corresponding Message
+    - Push Branch To Repository
