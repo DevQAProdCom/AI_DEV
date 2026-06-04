@@ -60,8 +60,9 @@ steps:
     export WORK_ITEM_ID="$WORK_ITEM"
 
     echo "Running Copilot agent 'Task_Developer' from agents folder"
-    # Run the Copilot CLI agent. Adjust the command below if your Copilot CLI uses a different subcommand or flag.
-    copilot agent run --file agents/Task_Developer --env WORK_ITEM_ID="$WORK_ITEM"
+    # Run the Copilot CLI agent. Use positional path for the agent file instead of --file
+    # If your copilot CLI version requires a different syntax, adjust accordingly.
+    copilot agent run agents/Task_Developer --env WORK_ITEM_ID="$WORK_ITEM"
   displayName: 'Run Copilot agent Task_Developer'
   env:
     # ensure az + npm commands can find auth tokens if set as pipeline variables/secrets
