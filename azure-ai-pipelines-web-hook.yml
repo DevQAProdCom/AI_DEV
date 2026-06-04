@@ -1,0 +1,84 @@
+# Starter pipeline with Copilot & Azure CLI install + Copilot agent run
+# Add/adjust steps as your project requires
+
+trigger: none
+resources:
+  webhooks:
+    - webhook: BoardsTrigger             
+      connection: BoardsTriggerServiceConnectionName
+
+- job: RunCopilotTasks
+  pool:
+    vmImage: 'ubuntu-latest'
+  variables:
+    # Map the JSON keys to pipeline variables so all steps can use them
+    WorkItemId: ${{ parameters.BoardsTrigger.resource.fields['System.Id'] }}
+    WorkItemTitle: ${{ parameters.BoardsTrigger.resource.fields['System.Title'] }}
+    WorkItemState: ${{ parameters.BoardsTrigger.resource.fields['System.State'] }}
+
+  # Use the extracted data inside your code blocks
+- script: |
+      echo "Processing Work Item ID: $(WorkItemId)"
+      echo "The Title is: $(WorkItemTitle)"
+      echo "Current Status: $(WorkItemState)"
+    displayName: 'Echo WebHook Data'
+
+  steps:
+  # Install prerequisites (curl, sudo present on ubuntu-latest)
+  - script: |
+      set -e
+      echo "Installing Azure CLI..."
+      curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+    displayName: 'Install Azure CLI'
+
+  # Install GitHub Copilot CLI using official install script
+  - script: |
+      set -e
+      echo "Installing GitHub Copilot CLI using official install script..."
+      curl -fsSL https://gh.io/copilot-install | sudo bash
+    displayName: 'Install GitHub Copilot CLI'
+
+  # Add azure-devops extension
+  - script: |
+      set -e
+      echo "Adding azure-devops extension to az..."
+      az extension add --name azure-devops
+      echo $(AZURE_DEVOPS_TOKEN) | az devops login --organization https://dev.azure.com/DevQAProdCom
+    displayName: 'az extension add azure-devops'
+
+  # Validate/normalize WorkItemId and run Copilot agent from agents/Task_Developer
+  - script: |
+      set -e
+      echo "WorkItemId parameter: '$(WorkItemId)'"
+
+      if [ "$(WorkItemId)" = 'Not Set' ]; then
+        echo "WorkItemId not set; using 'Not Set' placeholder"
+        WORK_ITEM='Not Set'
+      else
+        # Trim possible quotes and validate numeric
+        WI_RAW="$(WorkItemId)"
+        WI_TRIMMED=$(echo "$WI_RAW" | tr -d '"')
+        if ! echo "$WI_TRIMMED" | grep -E '^[0-9]+$' > /dev/null; then
+          echo "Provided WorkItemId is not numeric: $WI_TRIMMED"
+          exit 1
+        fi
+        WORK_ITEM="$WI_TRIMMED"
+        echo "Using WorkItemId: $WORK_ITEM"
+      fi
+
+      # Export as env var for the agent if it reads it
+      export WORK_ITEM_ID="$WORK_ITEM"
+
+      echo "Running Copilot agent 'Task_Developer' from agents folder"
+      # Ensure the agent receives input: WORK_ITEM_ID is exported above.
+      # Use top-level prompt so Copilot runs the agent non-interactively with the prompt.
+      copilot --agent task-developer --allow-all-tools -p "Use $WORK_ITEM"
+    displayName: 'Run Copilot agent Task_Developer'
+    env:
+      # ensure az + npm commands can find auth tokens if set as pipeline variables/secrets
+      GITHUB_TOKEN: $(GITHUB_TOKEN)
+
+  # Add any additional build/test steps below
+  - script: |
+      echo "Pipeline finished. Add build/test/deploy steps as needed."
+    displayName: 'Placeholder end step'
