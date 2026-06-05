@@ -75,19 +75,33 @@ jobs:
         WI_TRIMMED=$(echo "$WI_RAW" | tr -d '"')
         if ! echo "$WI_TRIMMED" | grep -E '^[0-9]+$' > /dev/null; then
           echo "Provided WorkItemId is not numeric: $WI_TRIMMED"
-          exit 1
+          # continue — WorkItemId may not be numeric for some webhook types
+          WORK_ITEM="$WI_TRIMMED"
+        else
+          WORK_ITEM="$WI_TRIMMED"
+          echo "Using WorkItemId: $WORK_ITEM"
         fi
-        WORK_ITEM="$WI_TRIMMED"
-        echo "Using WorkItemId: $WORK_ITEM"
       fi
 
       # Export as env var for the agent if it reads it
       export WORK_ITEM_ID="$WORK_ITEM"
 
-      echo "Running Copilot agent 'Task_Developer' from agents folder"
-      # Ensure the agent receives input: WORK_ITEM_ID is exported above.
-      # Use top-level prompt so Copilot runs the agent non-interactively with the prompt.
-      copilot --agent task-developer --allow-all-tools -p "Use $WORK_ITEM"
+      echo "Creating webhook payload file 'webhook_payload.json'"
+      # If jq exists, pretty-print; otherwise write raw
+      if command -v jq >/dev/null 2>&1; then
+        echo "$WEBHOOK_RESOURCE" | jq . > webhook_payload.json || echo "$WEBHOOK_RESOURCE" > webhook_payload.json
+      else
+        echo "$WEBHOOK_RESOURCE" > webhook_payload.json
+      fi
+
+      echo "=== webhook_payload.json (head 2KB) ==="
+      head -c 2048 webhook_payload.json || true
+      echo "\n=== end head ==="
+
+      # Expose payload path and run Copilot agent with full payload as prompt
+      PAYLOAD=$(cat webhook_payload.json)
+      echo "Running Copilot agent 'Task_Developer' with webhook payload as prompt"
+      copilot --agent task-developer --allow-all-tools -p "Webhook payload: $PAYLOAD"
     displayName: 'Run Copilot agent Task_Developer'
     env:
       # ensure az + npm commands can find auth tokens if set as pipeline variables/secrets
@@ -95,6 +109,7 @@ jobs:
       WORKITEM_ID: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
       WORKITEM_TITLE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
       WORKITEM_STATE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.State'] ]
+      WEBHOOK_RESOURCE: $[ resources.webhooks.BoardsTrigger.resource ]
 
   # Add any additional build/test steps below
   - script: |
