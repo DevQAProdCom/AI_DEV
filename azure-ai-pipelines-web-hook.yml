@@ -25,12 +25,11 @@ jobs:
       echo "$WEBHOOK_PAYLOAD" | jq . || echo "(jq parse failed — raw above)"
       echo
       echo "========================================================"
-      echo "=== STEP 3: Key fields extracted                     ==="
+      echo "=== STEP 3: Key fields extracted from revision       ==="
       echo "========================================================"
-      echo "workItemId:  $(echo "$WEBHOOK_PAYLOAD" | jq -r '.id // .workItemId // empty')"
-      echo "eventType:   $(echo "$WEBHOOK_PAYLOAD" | jq -r '.eventType // empty')"
-      echo "title:       $(echo "$WEBHOOK_PAYLOAD" | jq -r '.fields["System.Title"] // .resource.fields["System.Title"] // empty')"
-      echo "state:       $(echo "$WEBHOOK_PAYLOAD" | jq -r '.fields["System.State"] // .resource.fields["System.State"] // empty')"
+      echo "revision.id:    $(echo "$WEBHOOK_PAYLOAD" | jq -r '.revision.id // empty')"
+      echo "revision.title: $(echo "$WEBHOOK_PAYLOAD" | jq -r '.revision.fields["System.Title"] // empty')"
+      echo "revision.state: $(echo "$WEBHOOK_PAYLOAD" | jq -r '.revision.fields["System.State"] // empty')"
       echo
       echo "========================================================"
       echo "=== STEP 4: All printenv (sorted)                    ==="
