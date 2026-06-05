@@ -12,31 +12,23 @@ jobs:
   pool:
     vmImage: 'ubuntu-latest'
   steps:
+  # Dump every RESOURCES_* env var Azure Pipelines injects and the scalar fields we map
   - script: |
-      set -e
-      echo "=== Dump webhook step-level env vars and resource ==="
-      echo "WEBHOOK_RESOURCE: '$WEBHOOK_RESOURCE'"
-      echo "WORKITEM_ID: '$WORKITEM_ID'"
-      echo "WORKITEM_TITLE: '$WORKITEM_TITLE'"
-      echo "WORKITEM_STATE: '$WORKITEM_STATE'"
+      echo "=== Scalar webhook fields mapped via expressions ==="
+      echo "WORKITEM_ID (resource.workItemId): '$WORKITEM_ID'"
+      echo "EVENT_TYPE (eventType):            '$EVENT_TYPE'"
+      echo "SUBSCRIPTION_ID (subscriptionId):  '$SUBSCRIPTION_ID'"
       echo
-      echo "=== printenv (sorted) ==="
+      echo "=== All RESOURCES_* env vars injected by Azure Pipelines ==="
+      printenv | grep -i RESOURCES_ | sort || true
+      echo
+      echo "=== Full printenv (sorted) ==="
       printenv | sort
     displayName: 'Dump webhook context'
     env:
-      WORKITEM_ID: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
-      WORKITEM_TITLE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
-      WORKITEM_STATE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.State'] ]
-
-  - script: |
-      echo "Processing Work Item ID: $WORKITEM_ID"
-      echo "The Title is: $WORKITEM_TITLE"
-      echo "Current Status: $WORKITEM_STATE"
-    displayName: 'Echo WebHook Data'
-    env:
-      WORKITEM_ID: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
-      WORKITEM_TITLE: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
-      WORKITEM_STATE: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.State'] ]
+      WORKITEM_ID:     $[ resources.webhooks.BoardsTrigger.resource.workItemId ]
+      EVENT_TYPE:      $[ resources.webhooks.BoardsTrigger.eventType ]
+      SUBSCRIPTION_ID: $[ resources.webhooks.BoardsTrigger.subscriptionId ]
 
   # Install prerequisites (curl, sudo present on ubuntu-latest)
   - script: |
@@ -60,20 +52,32 @@ jobs:
       echo $(AZURE_DEVOPS_TOKEN) | az devops login --organization https://dev.azure.com/DevQAProdCom
     displayName: 'az extension add azure-devops'
 
-  # Validate/normalize WorkItemId and run Copilot agent from agents/Task_Developer
+  # Fetch full work item JSON from Azure DevOps and pass to Copilot agent
   - script: |
       set -e
-      echo "Running Copilot agent 'Task_Developer' from agents folder"
-      copilot --agent task-developer --allow-all-tools -p "Use $WORKITEM_ID"
+      echo "WORKITEM_ID: '$WORKITEM_ID'"
+
+      if [ -z "$WORKITEM_ID" ]; then
+        echo "ERROR: WORKITEM_ID is empty — webhook may not have carried resource.workItemId"
+        exit 1
+      fi
+
+      echo "=== Fetching full work item JSON ==="
+      az boards work-item show --id "$WORKITEM_ID" --output json | tee workitem.json
+      echo
+      echo "=== workitem.json ==="
+      cat workitem.json
+
+      PAYLOAD=$(cat workitem.json)
+      echo "Running Copilot agent 'Task_Developer' with full work item payload"
+      copilot --agent task-developer --allow-all-tools -p "Work item payload: $PAYLOAD"
     displayName: 'Run Copilot agent Task_Developer'
     env:
-      # ensure az + npm commands can find auth tokens if set as pipeline variables/secrets
       GITHUB_TOKEN: $(GITHUB_TOKEN)
-      WORKITEM_ID: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
-      WORKITEM_TITLE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
-      WORKITEM_STATE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.State'] ]
+      WORKITEM_ID: $[ resources.webhooks.BoardsTrigger.resource.workItemId ]
 
   # Add any additional build/test steps below
   - script: |
       echo "Pipeline finished. Add build/test/deploy steps as needed."
     displayName: 'Placeholder end step'
+
