@@ -11,24 +11,27 @@ jobs:
 - job: RunCopilotTasks
   pool:
     vmImage: 'ubuntu-latest'
+  variables:
+    # Runtime expressions in variables: work correctly — use $(workItemId) in scripts
+    workItemId: $[ resources.webhooks.BoardsTrigger.resource.workItemId ]
   steps:
-  # Dump every RESOURCES_* env var Azure Pipelines injects and the scalar fields we map
+  # FIRST: dump everything so we can see the full webhook context before any other work
   - script: |
-      echo "=== Scalar webhook fields mapped via expressions ==="
-      echo "WORKITEM_ID (resource.workItemId): '$WORKITEM_ID'"
-      echo "EVENT_TYPE (eventType):            '$EVENT_TYPE'"
-      echo "SUBSCRIPTION_ID (subscriptionId):  '$SUBSCRIPTION_ID'"
-      echo
-      echo "=== All RESOURCES_* env vars injected by Azure Pipelines ==="
-      printenv | grep -i RESOURCES_ | sort || true
-      echo
-      echo "=== Full printenv (sorted) ==="
+      echo "========================================================"
+      echo "=== STEP 1: Dump all environment (sorted)            ==="
+      echo "========================================================"
       printenv | sort
-    displayName: 'Dump webhook context'
-    env:
-      WORKITEM_ID:     $[ resources.webhooks.BoardsTrigger.resource.workItemId ]
-      EVENT_TYPE:      $[ resources.webhooks.BoardsTrigger.eventType ]
-      SUBSCRIPTION_ID: $[ resources.webhooks.BoardsTrigger.subscriptionId ]
+      echo
+      echo "========================================================"
+      echo "=== STEP 2: Webhook scalar fields via job variables  ==="
+      echo "========================================================"
+      echo "workItemId: '$(workItemId)'"
+      echo
+      echo "========================================================"
+      echo "=== STEP 3: All RESOURCES_WEBHOOKS_* env vars        ==="
+      echo "========================================================"
+      printenv | grep -i 'RESOURCES_WEBHOOKS\|BOARDSTRIGGER' | sort || echo "(none found)"
+    displayName: 'Dump full webhook context'
 
   # Install prerequisites (curl, sudo present on ubuntu-latest)
   - script: |
@@ -55,17 +58,17 @@ jobs:
   # Fetch full work item JSON from Azure DevOps and pass to Copilot agent
   - script: |
       set -e
-      echo "WORKITEM_ID: '$WORKITEM_ID'"
+      echo "workItemId from pipeline variable: '$(workItemId)'"
 
-      if [ -z "$WORKITEM_ID" ]; then
-        echo "ERROR: WORKITEM_ID is empty — webhook may not have carried resource.workItemId"
+      if [ -z "$(workItemId)" ]; then
+        echo "ERROR: workItemId is empty — check Dump webhook context step output above"
         exit 1
       fi
 
       echo "=== Fetching full work item JSON ==="
-      az boards work-item show --id "$WORKITEM_ID" --output json | tee workitem.json
+      az boards work-item show --id "$(workItemId)" --output json | tee workitem.json
       echo
-      echo "=== workitem.json ==="
+      echo "=== Full workitem.json ==="
       cat workitem.json
 
       PAYLOAD=$(cat workitem.json)
@@ -74,7 +77,6 @@ jobs:
     displayName: 'Run Copilot agent Task_Developer'
     env:
       GITHUB_TOKEN: $(GITHUB_TOKEN)
-      WORKITEM_ID: $[ resources.webhooks.BoardsTrigger.resource.workItemId ]
 
   # Add any additional build/test steps below
   - script: |
