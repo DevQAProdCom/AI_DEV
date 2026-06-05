@@ -11,27 +11,35 @@ jobs:
 - job: RunCopilotTasks
   pool:
     vmImage: 'ubuntu-latest'
-  variables:
-    # Runtime expressions in variables: work correctly — use $(workItemId) in scripts
-    workItemId: $[ resources.webhooks.BoardsTrigger.resource.workItemId ]
   steps:
-  # FIRST: dump everything so we can see the full webhook context before any other work
+  # FIRST: dump the full raw webhook JSON body before any other work
   - script: |
       echo "========================================================"
-      echo "=== STEP 1: Dump all environment (sorted)            ==="
+      echo "=== STEP 1: Raw webhook payload (full JSON)          ==="
+      echo "========================================================"
+      echo "$WEBHOOK_PAYLOAD"
+      echo
+      echo "========================================================"
+      echo "=== STEP 2: Pretty-printed (jq)                      ==="
+      echo "========================================================"
+      echo "$WEBHOOK_PAYLOAD" | jq . || echo "(jq parse failed — raw above)"
+      echo
+      echo "========================================================"
+      echo "=== STEP 3: Key fields extracted                     ==="
+      echo "========================================================"
+      echo "workItemId:  $(echo "$WEBHOOK_PAYLOAD" | jq -r '.id // .workItemId // empty')"
+      echo "eventType:   $(echo "$WEBHOOK_PAYLOAD" | jq -r '.eventType // empty')"
+      echo "title:       $(echo "$WEBHOOK_PAYLOAD" | jq -r '.fields["System.Title"] // .resource.fields["System.Title"] // empty')"
+      echo "state:       $(echo "$WEBHOOK_PAYLOAD" | jq -r '.fields["System.State"] // .resource.fields["System.State"] // empty')"
+      echo
+      echo "========================================================"
+      echo "=== STEP 4: All printenv (sorted)                    ==="
       echo "========================================================"
       printenv | sort
-      echo
-      echo "========================================================"
-      echo "=== STEP 2: Webhook scalar fields via job variables  ==="
-      echo "========================================================"
-      echo "workItemId: '$(workItemId)'"
-      echo
-      echo "========================================================"
-      echo "=== STEP 3: All RESOURCES_WEBHOOKS_* env vars        ==="
-      echo "========================================================"
-      printenv | grep -i 'RESOURCES_WEBHOOKS\|BOARDSTRIGGER' | sort || echo "(none found)"
     displayName: 'Dump full webhook context'
+    env:
+      # Single-quoted template expression serialises the full resource object to JSON string
+      WEBHOOK_PAYLOAD: '${{ parameters.BoardsTrigger.resource }}'
 
   # Install prerequisites (curl, sudo present on ubuntu-latest)
   - script: |
@@ -55,31 +63,32 @@ jobs:
       echo $(AZURE_DEVOPS_TOKEN) | az devops login --organization https://dev.azure.com/DevQAProdCom
     displayName: 'az extension add azure-devops'
 
-  # Fetch full work item JSON from Azure DevOps and pass to Copilot agent
+  # Extract workItemId from payload, fetch full work item, pass to Copilot agent
   - script: |
       set -e
-      echo "workItemId from pipeline variable: '$(workItemId)'"
+      echo "Raw payload snippet: $(echo "$WEBHOOK_PAYLOAD" | head -c 200)"
 
-      if [ -z "$(workItemId)" ]; then
-        echo "ERROR: workItemId is empty — check Dump webhook context step output above"
+      # Extract work item ID from the JSON payload
+      WORK_ITEM_ID=$(echo "$WEBHOOK_PAYLOAD" | jq -r '.id // .workItemId // .resource.id // .resource.workItemId // empty')
+      echo "Extracted WORK_ITEM_ID: '$WORK_ITEM_ID'"
+
+      if [ -z "$WORK_ITEM_ID" ] || [ "$WORK_ITEM_ID" = "null" ]; then
+        echo "ERROR: could not extract workItemId from payload — see Dump step above"
         exit 1
       fi
 
-      echo "=== Fetching full work item JSON ==="
-      az boards work-item show --id "$(workItemId)" --output json | tee workitem.json
-      echo
-      echo "=== Full workitem.json ==="
-      cat workitem.json
+      echo "=== Fetching full work item JSON from Azure DevOps ==="
+      az boards work-item show --id "$WORK_ITEM_ID" --output json | tee workitem.json
 
-      PAYLOAD=$(cat workitem.json)
+      FULL_WORK_ITEM=$(cat workitem.json)
       echo "Running Copilot agent 'Task_Developer' with full work item payload"
-      copilot --agent task-developer --allow-all-tools -p "Work item payload: $PAYLOAD"
+      copilot --agent task-developer --allow-all-tools -p "Work item JSON: $FULL_WORK_ITEM"
     displayName: 'Run Copilot agent Task_Developer'
     env:
       GITHUB_TOKEN: $(GITHUB_TOKEN)
+      WEBHOOK_PAYLOAD: '${{ parameters.BoardsTrigger.resource }}'
 
   # Add any additional build/test steps below
   - script: |
       echo "Pipeline finished. Add build/test/deploy steps as needed."
     displayName: 'Placeholder end step'
-
