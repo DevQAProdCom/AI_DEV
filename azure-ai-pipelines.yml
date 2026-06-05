@@ -2,7 +2,7 @@
 # Add/adjust steps as your project requires
 
 trigger:
-- main
+- none
 
 # Pipeline parameters
 parameters:
