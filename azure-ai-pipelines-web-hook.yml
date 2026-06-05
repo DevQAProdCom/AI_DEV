@@ -62,26 +62,21 @@ jobs:
       echo $(AZURE_DEVOPS_TOKEN) | az devops login --organization https://dev.azure.com/DevQAProdCom
     displayName: 'az extension add azure-devops'
 
-  # Extract workItemId from payload, fetch full work item, pass to Copilot agent
+  # Extract workItemId from revision and pass to Copilot agent
   - script: |
       set -e
-      echo "Raw payload snippet: $(echo "$WEBHOOK_PAYLOAD" | head -c 200)"
 
-      # Extract work item ID from the JSON payload
-      WORK_ITEM_ID=$(echo "$WEBHOOK_PAYLOAD" | jq -r '.id // .workItemId // .resource.id // .resource.workItemId // empty')
+      # Extract work item ID from revision
+      WORK_ITEM_ID=$(echo "$WEBHOOK_PAYLOAD" | jq -r '.revision.id // empty')
       echo "Extracted WORK_ITEM_ID: '$WORK_ITEM_ID'"
 
       if [ -z "$WORK_ITEM_ID" ] || [ "$WORK_ITEM_ID" = "null" ]; then
-        echo "ERROR: could not extract workItemId from payload — see Dump step above"
+        echo "ERROR: could not extract revision.id from payload — see Dump step above"
         exit 1
       fi
 
-      echo "=== Fetching full work item JSON from Azure DevOps ==="
-      az boards work-item show --id "$WORK_ITEM_ID" --output json | tee workitem.json
-
-      FULL_WORK_ITEM=$(cat workitem.json)
-      echo "Running Copilot agent 'Task_Developer' with full work item payload"
-      copilot --agent task-developer --allow-all-tools -p "Work item JSON: $FULL_WORK_ITEM"
+      echo "Running Copilot agent 'Task_Developer' with work item ID: $WORK_ITEM_ID"
+      copilot --agent task-developer --allow-all-tools -p "Work item ID: $WORK_ITEM_ID"
     displayName: 'Run Copilot agent Task_Developer'
     env:
       GITHUB_TOKEN: $(GITHUB_TOKEN)
