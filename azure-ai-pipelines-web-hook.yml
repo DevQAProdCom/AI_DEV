@@ -15,6 +15,7 @@ jobs:
   - script: |
       set -e
       echo "=== Dump webhook step-level env vars and resource ==="
+      echo ${{ parameters.BoardsTrigger.resource}}
       echo "WEBHOOK_RESOURCE: '$WEBHOOK_RESOURCE'"
       echo "WORKITEM_ID: '$WORKITEM_ID'"
       echo "WORKITEM_TITLE: '$WORKITEM_TITLE'"
@@ -24,7 +25,7 @@ jobs:
       printenv | sort
     displayName: 'Dump webhook context'
     env:
-      WEBHOOK_RESOURCE: $[ parameters.webhooks.BoardsTrigger.resource ]
+      WEBHOOK_RESOURCE: $[ parameters.webhooks.BoardsTrigger.resource.fields ]
       WORKITEM_ID: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
       WORKITEM_TITLE: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
       WORKITEM_STATE: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.State'] ]
