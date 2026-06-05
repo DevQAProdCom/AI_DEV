@@ -38,8 +38,8 @@ jobs:
       printenv | sort
     displayName: 'Dump full webhook context'
     env:
-      # Single-quoted template expression serialises the full resource object to JSON string
-      WEBHOOK_PAYLOAD: '${{ parameters.BoardsTrigger.resource }}'
+      # convertToJson serialises the resource object to a JSON string
+      WEBHOOK_PAYLOAD: ${{ convertToJson(parameters.BoardsTrigger.resource) }}
 
   # Install prerequisites (curl, sudo present on ubuntu-latest)
   - script: |
