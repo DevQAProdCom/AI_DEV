@@ -86,7 +86,7 @@ jobs:
     displayName: 'Run Copilot agent Task_Developer'
     env:
       GITHUB_TOKEN: $(GITHUB_TOKEN)
-      WEBHOOK_PAYLOAD: '${{ parameters.BoardsTrigger.resource }}'
+      WEBHOOK_PAYLOAD: ${{ convertToJson(parameters.BoardsTrigger.resource) }}
 
   # Add any additional build/test steps below
   - script: |
