@@ -24,10 +24,10 @@ jobs:
       printenv | sort
     displayName: 'Dump webhook context'
     env:
-      WEBHOOK_RESOURCE: $[ resources.webhooks.BoardsTrigger.resource ]
-      WORKITEM_ID: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
-      WORKITEM_TITLE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
-      WORKITEM_STATE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.State'] ]
+      WEBHOOK_RESOURCE: $[ parameters.webhooks.BoardsTrigger.resource ]
+      WORKITEM_ID: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
+      WORKITEM_TITLE: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
+      WORKITEM_STATE: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.State'] ]
 
   - script: |
       echo "Processing Work Item ID: $WORKITEM_ID"
@@ -35,9 +35,9 @@ jobs:
       echo "Current Status: $WORKITEM_STATE"
     displayName: 'Echo WebHook Data'
     env:
-      WORKITEM_ID: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
-      WORKITEM_TITLE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
-      WORKITEM_STATE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.State'] ]
+      WORKITEM_ID: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
+      WORKITEM_TITLE: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
+      WORKITEM_STATE: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.State'] ]
 
   # Install prerequisites (curl, sudo present on ubuntu-latest)
   - script: |
@@ -70,9 +70,9 @@ jobs:
     env:
       # ensure az + npm commands can find auth tokens if set as pipeline variables/secrets
       GITHUB_TOKEN: $(GITHUB_TOKEN)
-      WORKITEM_ID: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
-      WORKITEM_TITLE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
-      WORKITEM_STATE: $[ resources.webhooks.BoardsTrigger.resource.fields['System.State'] ]
+      WORKITEM_ID: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.Id'] ]
+      WORKITEM_TITLE: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.Title'] ]
+      WORKITEM_STATE: $[ parameters.webhooks.BoardsTrigger.resource.fields['System.State'] ]
 
   # Add any additional build/test steps below
   - script: |
